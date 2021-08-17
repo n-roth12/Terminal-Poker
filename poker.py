@@ -361,55 +361,78 @@ def advance(game, players):
 	game.advancePhase()
 
 def userBet(player, game):
+	print('\n')
 	print('Your hand is: ' + player.display())
 	print('Place your bet: ')
+	if game.getBet() > 0 :
+		print('(Enter less than ' + str(game.getBet()) + ' to fold)')
 	return(int(input()))
 
 def betPhase(game, players):
+	"""
+	Carries out the betting for each phase of the game.
+	Each player gets the chance to raise, call, or flop. Then the betting
+	continues until all players have called the last raise or folded.
+	:type game: Game
+	:type players: List[Player]
+	"""
 	index = 0
 	count = 0
+	last_raiser_id = players[0].id
+	curr_player = players[0]
+
 	print('Current pot: ' + str(game.getPot()))
 	print('\n')
-	while not (count == len(players)):
+
+	while not (curr_player.id == last_raiser_id and count > 0):
 		time.sleep(0.5)
 
-		if index == len(players) - 1:
+		if curr_player.id == -1:
 			bet = userBet(players[index], game)
-
 		else:
 			bet = makeBet(players[index], game)
 
 		if bet < game.getBet():
-			print('Player ' + str(players[index].getId()) + ' folds')
-			players.remove(players[index])
+			if curr_player.id != -1:
+				print('Player ' + str(curr_player.id) + ' folds')
+			else:
+				print('You folded')
+			players.remove(curr_player)
 			index = index - 1
-			count = 1
 
 		elif bet == game.getBet():
-			print('Player ' + str(players[index].getId()) + ' calls ' + str(bet))
+			if curr_player.id != -1:
+				print('Player ' + str(curr_player.id) + ' calls ' + str(bet))
+			else:
+				print('You called ' + str(bet))
 			game.setPot(game.getPot() + bet)
-			count = count + 1
 
 		elif bet > game.getBet():
 			game.setBet(bet)
 			game.setPot(game.getPot() + bet)
-			print('Player ' + str(players[index].getId()) + ' raises ' + str(bet))
-			count = 1
+			last_raiser_id = curr_player.id
+			if curr_player.id != -1:
+				print('Player ' + str(curr_player.id) + ' raises ' + str(bet))
+			else:
+				print('You raised ' + str(bet))
 
+		count += 1
 		index = (index + 1) % len(players)
-	print('\n')
-	print('Current pot: ' + str(game.getPot()))
+		curr_player = players[index]
 
 
 def playGame(num_players):
+	"""
+	:type num_players: int
+	Plays a full game of poker. Players are initialized with two Cards
+	then added to the Game. All Cards are generated then added to the 
+	CardInGame list.
+	"""
 	print(' \n\n\n----------------------------')
 	print('STARTING GAME WITH ' + str(num_players) + ' PLAYERS')
 	print('----------------------------\n')
 	time.sleep(1)
 
-	# Adding players and Cards to the Game
-	# Players are initialized with Cards then added to the Game
-	# All Cards generated are added to the CardsInGame list
 	players = []
 	cardsInGame = []
 	for i in range(0, num_players):
@@ -418,12 +441,16 @@ def playGame(num_players):
 	user = Player(generateCard(), generateCard(), 0)
 	game = Game(players + [user])
 
-	user_player = Player(generateCard(), generateCard(), -1)					# Player.id = -1 for user 
+	user_player = Player(generateCard(), generateCard(), -1)	# Player.id = -1 for user 
 	players.append(user_player)
 
+	# Pre-flop betting phase
 	betPhase(game, players)
 	if len(players) == 1:
-		print('Player ' + str(players[0].getId()) + ' wins before showdown!')
+		if players[0].id != -1:
+			print('Player ' + str(players[0].getId()) + ' wins before showdown!')
+		else:
+			print('You win before showdown!')
 		return
 
 	time.sleep(0.5)
@@ -431,9 +458,13 @@ def playGame(num_players):
 	advance(game, players)
 	updateAllHands(players)
 
+	# Flop betting phase
 	betPhase(game, players)
 	if len(players) == 1:
-		print('Player ' + str(players[0].getId()) + ' wins before showdown!')
+		if players[0].id != -1: 
+			print('Player ' + str(players[0].getId()) + ' wins before showdown!')
+		else:
+			print('You win before showdown!')
 		return
 
 	time.sleep(0.5)
@@ -441,9 +472,13 @@ def playGame(num_players):
 	advance(game, players)
 	updateAllHands(players)
 
+	# Turn betting phase
 	betPhase(game, players)
 	if len(players) == 1:
-		print('Player ' + str(players[0].getId()) + ' wins before showdown!')
+		if players[0].id != -1:
+			print('Player ' + str(players[0].getId()) + ' wins before showdown!')
+		else:
+			print('You win before showdown!')
 		return
 
 	time.sleep(0.5)
@@ -451,9 +486,13 @@ def playGame(num_players):
 	advance(game, players)
 	updateAllHands(players)
 
+	# River betting phase
 	betPhase(game, players)
 	if len(players) == 1:
-		print('Player ' + str(players[0].getId()) + ' wins before showdown!')
+		if players[0].id != -1:
+			print('Player ' + str(players[0].getId()) + ' wins before showdown!')
+		else:
+			print('You win before showdown!')
 		return
 
 	print('\n')
@@ -465,10 +504,20 @@ def playGame(num_players):
 		print('Player ' + str(player.getId()) + ' hand strength: ', player.getHandStrength())
 		print('\n')
 		index = index + 1
+
 	for winner in getWinner(players):
-		print('Player ' + str(winner.getId()) + ' Wins with ' + winner.getHandName() + ': ' +  displayHand(winner.getBestHand()))
+		if winner.id != -1:
+			print('Player ' + str(winner.getId()) + ' Wins with ' + winner.getHandName() + ': ' +  displayHand(winner.getBestHand()))
+		else:
+			print('You Win with ' + winner.getHandName() + ': ' + displayHand(winner.getBestHand()))
 
 def getWinner(players):
+	"""
+	:type players: List[Player]
+	:rtype: List[Player]
+	Returns the players that had the best hand in the game.
+	This will usually be one player.
+	"""
 	strengths = [player.getHandStrength() for player in players]
 	winners = []
 	for i in range(0, len(players)):
@@ -485,13 +534,29 @@ def getWinner(players):
 				return winners
 	return winners
 
-def test(num_players):
-	print('You are playing with ' + str(num_players) + ' players')
+def checkPlayAgain():
+	print('Would you like to play again? (Y/N): ')
+	given_answer = False
+	while not given_answer:
+		answer = input().lower()
+		if answer == 'y':
+			return True
+		elif answer == 'n':
+			return False
+		else:
+			print('Please enter Y to play again and N to stop playing: ')
 
 if __name__ == '__main__':
 	print('Enter number of opponents: ')
 	num_players = int(input())
-	playGame(num_players)
+	keep_playing = True
+
+	while keep_playing:
+		playGame(num_players)
+		keep_playing = checkPlayAgain()
+
+	print('Thanks for playing!')
+	print('\n')
 
 
 
